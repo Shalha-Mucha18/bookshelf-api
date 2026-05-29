@@ -1,7 +1,7 @@
 from .models import User    
 from sqlmodel import select, desc
 from sqlmodel.ext.asyncio.session import AsyncSession
-from .utils import generated_password_hash
+from .utils import generated_password_hash, verify_password
 from .schemas import UserCreateModel
 
 class AuthService:
@@ -38,6 +38,5 @@ class AuthService:
 
         return new_user
 
-        
-
-        
+    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
+        return verify_password(plain_password, hashed_password)
