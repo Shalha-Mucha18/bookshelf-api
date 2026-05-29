@@ -12,7 +12,7 @@ service = BookService()
 
 
 # get all books
-@book_router.get("/", response_model=List[Book])
+@book_router.get("/", response_model=List[Book],status_code=status.HTTP_200_OK)
 async def get_all_books(session: AsyncSession = Depends(get_session)):
     return await service.get_all_books(session)
 
@@ -24,13 +24,13 @@ async def add_book(book_data: BookCreate, session: AsyncSession = Depends(get_se
 
 
 # get a book by UID
-@book_router.get("/{book_uid}", response_model=Book)
+@book_router.get("/{book_uid}", response_model=Book,status_code=status.HTTP_200_OK)
 async def get_book_by_uid(book_uid: uuid.UUID, session: AsyncSession = Depends(get_session)):
     return await service.get_book_by_uid(session, book_uid)
 
 
 # update a book by UID
-@book_router.patch("/{book_uid}", response_model=Book)
+@book_router.patch("/{book_uid}", response_model=Book,status_code=status.HTTP_200_OK)
 async def update_book(book_uid: uuid.UUID, book_data: BookUpdate, session: AsyncSession = Depends(get_session)):
     return await service.update_book(session, book_uid, book_data)
 
