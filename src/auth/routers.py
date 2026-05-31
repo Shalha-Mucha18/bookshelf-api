@@ -10,13 +10,15 @@ from fastapi.responses import JSONResponse
 from .dependencies import AccessTokenScheme, RefreshTokenScheme
 import datetime
 from src.db.redis import add_jti_to_blocklist, token_in_blocklist
-
+from src.auth.dependencies import get_current_user
+from .dependencies import RoleChecker
+from typing import Any
 
 auth = APIRouter()
 
 
 auth_service = AuthService()
-
+role_checker = RoleChecker(allowed_roles=["admin", "user"])
 
 REFRESH_TOKEN_EXPIRY = 2
 
@@ -43,7 +45,7 @@ async def login(user_data: UserLoginModel, session: AsyncSession = Depends(get_s
         password_valid = auth_service.verify_password(user_password, user.hashed_password)
 
         if password_valid:
-            access_token = create_access_token(user_data={"email": user.email, "user_id": str(user.uid)})
+            access_token = create_access_token(user_data={"email": user.email, "user_id": str(user.uid), "role": user.role})
             
             refresh_token = create_access_token(
                 user_data={"email": user.email, "user_id": str(user.uid)},
@@ -61,6 +63,13 @@ async def login(user_data: UserLoginModel, session: AsyncSession = Depends(get_s
             )
 
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+
+
+
+
+@auth.get("/me", response_model=UserModel)
+async def get_current_user_info(current_user: UserModel = Depends(get_current_user),_bool: Any = Depends(role_checker)):
+    return current_user
 
 
 @auth.post("/refresh")
@@ -89,4 +98,3 @@ async def logout(token_data=Depends(AccessTokenScheme())):
     
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token data")
 
-    
