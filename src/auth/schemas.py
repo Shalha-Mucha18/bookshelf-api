@@ -17,6 +17,7 @@ class UserModel(BaseModel):
     email: str
     first_name: str
     last_name: str
+    role: str
     created_at: datetime
 
     model_config = {"from_attributes": True}
