@@ -7,6 +7,8 @@ from src.db.main import get_session
 from fastapi import HTTPException, status
 from datetime import timedelta
 from fastapi.responses import JSONResponse
+from .dependencies import AccessTokenScheme, RefreshTokenScheme
+import datetime
 
 
 auth = APIRouter()
@@ -58,3 +60,18 @@ async def login(user_data: UserLoginModel, session: AsyncSession = Depends(get_s
             )
 
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+
+
+@auth.post("/refresh")
+
+async def refresh_token(token_data=Depends(RefreshTokenScheme())):
+
+    expiery_time = token_data.get("exp")
+
+
+    if expiery_time and datetime.datetime.fromtimestamp(expiery_time) < datetime.datetime.now():
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token has expired")
+    
+    new_access_token = create_access_token(user_data =token_data['user'])
+
+    return JSONResponse(content={"access_token": new_access_token})
