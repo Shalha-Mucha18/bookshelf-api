@@ -19,7 +19,6 @@ app = FastAPI(
     version=version,
     title="Book Catalog API",
     description="A simple API for managing a book catalog",
-    lifespan=life_span
 )
 
 app.include_router(book_router, prefix=f"/api/v{version}/books", tags=["Books"])
