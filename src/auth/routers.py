@@ -9,6 +9,7 @@ from datetime import timedelta
 from fastapi.responses import JSONResponse
 from .dependencies import AccessTokenScheme, RefreshTokenScheme
 import datetime
+from src.db.redis import add_jti_to_blocklist, token_in_blocklist
 
 
 auth = APIRouter()
@@ -75,3 +76,17 @@ async def refresh_token(token_data=Depends(RefreshTokenScheme())):
     new_access_token = create_access_token(user_data =token_data['user'])
 
     return JSONResponse(content={"access_token": new_access_token})
+
+
+@auth.post("/logout")
+async def logout(token_data=Depends(AccessTokenScheme())):
+
+    jti = token_data.get("jti")
+
+    if jti:
+        await add_jti_to_blocklist(jti)
+        return JSONResponse(content={"message": "Logout successful"})
+    
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token data")
+
+    
