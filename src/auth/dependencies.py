@@ -3,6 +3,7 @@ from .utils import decode_access_token
 from fastapi import Request
 from fastapi import HTTPException
 from fastapi.security.http import HTTPAuthorizationCredentials
+from src.db.redis import token_in_blocklist
 
 class TokenScheme(HTTPBearer):
      
@@ -18,6 +19,10 @@ class TokenScheme(HTTPBearer):
             token_data = decode_access_token(token)
         except Exception:
             raise HTTPException(status_code=401, detail="Invalid or expired token")
+        
+        if await token_in_blocklist(token_data['jti']):
+            raise HTTPException(status_code=401, detail="Token has been revoked")
+    
 
         self.verify_token_data(token_data)
 
