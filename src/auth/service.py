@@ -32,6 +32,7 @@ class AuthService:
             last_name=user_data_dict["last_name"],
             hashed_password=generated_password_hash(user_data_dict["password"]),
         )
+        new_user.role = "user"
 
         session.add(new_user)
         await session.commit()
