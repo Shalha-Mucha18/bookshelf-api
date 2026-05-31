@@ -8,10 +8,12 @@ from fastapi import HTTPException, status
 from datetime import timedelta
 from fastapi.responses import JSONResponse
 
+
 auth = APIRouter()
 
 
 auth_service = AuthService()
+
 
 REFRESH_TOKEN_EXPIRY = 2
 
