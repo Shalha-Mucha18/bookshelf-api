@@ -5,4 +5,6 @@ class Settings(BaseSettings):
     database_url: str
     JWT_SECRET: str
     JWT_ALGORITHM: str
+    REDIS_HOST: str
+    REDIS_PORT: int
 settings = Settings()
