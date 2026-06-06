@@ -23,8 +23,10 @@ class BookService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
         return book
 
-    async def create_book(self, session: AsyncSession, book: BookCreate) -> Book:
+    async def create_book(self, session: AsyncSession, user_id: uuid.UUID, book: BookCreate) -> Book:
         new_book = Book(**book.model_dump())
+
+        new_book.user_id = user_id
         session.add(new_book)
         await session.commit()
         await session.refresh(new_book)
@@ -43,3 +45,8 @@ class BookService:
         book_to_delete = await self.get_book_by_uid(session, book_uid)
         await session.delete(book_to_delete)
         await session.commit()
+
+    async def get_user_books(self, user_uid: str, session: AsyncSession) -> list[Book]:
+        statement = select(Book).where(Book.user_id == user_uid).order_by(desc(Book.created_at))
+        result = await session.execute(statement)
+        return result.scalars().all()
