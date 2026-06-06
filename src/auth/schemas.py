@@ -5,6 +5,7 @@ from datetime import datetime, date
 import uuid
 from src.books.schema import BookCreate
 from src.books.schema import Book
+from src.reviews.schemas import ReviewModel
 
 
 class UserCreateModel(BaseModel):
@@ -26,10 +27,9 @@ class UserModel(BaseModel):
     model_config = {"from_attributes": True}
 
 class UserBooksModel(UserModel):
-    books: List[Book]    
-
-
-
+    books: List[Book]  
+    reviews: List[ReviewModel]
+  
 class UserLoginModel(BaseModel):
     email: str = Field(max_length=40)
     password: str = Field(min_length=6)      

@@ -6,6 +6,7 @@ from .schema import Book, BookCreate, BookUpdate
 from .service import BookService
 from src.db.main import get_session
 from src.auth.dependencies import RoleChecker,AccessTokenScheme
+from .schema import BookDetails
 
 book_router = APIRouter()
 service = BookService()
@@ -13,12 +14,12 @@ role_checker = Depends(RoleChecker(allowed_roles=["admin", "user"]))
 
 
 # get all books
-@book_router.get("/", response_model=List[Book], status_code=status.HTTP_200_OK, dependencies=[role_checker])
+@book_router.get("/", response_model=List[BookDetails], status_code=status.HTTP_200_OK, dependencies=[role_checker])
 async def get_all_books(session: AsyncSession = Depends(get_session)):
     return await service.get_all_books(session)
 
 @book_router.get(
-    "/user/{user_uid}", response_model=List[Book], dependencies=[role_checker]
+    "/user/{user_uid}", response_model=List[BookDetails], dependencies=[role_checker]
 )
 async def get_user_book_submissions(
     user_uid: str,
@@ -39,7 +40,7 @@ async def add_book(book_data: BookCreate, session: AsyncSession = Depends(get_se
 
 
 # get a book by UID
-@book_router.get("/{book_uid}", response_model=Book, status_code=status.HTTP_200_OK, dependencies=[role_checker],)
+@book_router.get("/{book_uid}", response_model=BookDetails, status_code=status.HTTP_200_OK, dependencies=[role_checker],)
 async def get_book_by_uid(book_uid: uuid.UUID, session: AsyncSession = Depends(get_session), user_details: dict = Depends(AccessTokenScheme())):
     return await service.get_book_by_uid(session, book_uid)
 
