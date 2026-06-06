@@ -5,7 +5,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from .schema import Book, BookCreate, BookUpdate
 from .service import BookService
 from src.db.main import get_session
-from src.auth.dependencies import RoleChecker
+from src.auth.dependencies import RoleChecker,AccessTokenScheme
 
 book_router = APIRouter()
 service = BookService()
@@ -17,26 +17,40 @@ role_checker = Depends(RoleChecker(allowed_roles=["admin", "user"]))
 async def get_all_books(session: AsyncSession = Depends(get_session)):
     return await service.get_all_books(session)
 
+@book_router.get(
+    "/user/{user_uid}", response_model=List[Book], dependencies=[role_checker]
+)
+async def get_user_book_submissions(
+    user_uid: str,
+    session: AsyncSession = Depends(get_session),
+    _: dict = Depends(AccessTokenScheme()),
+):
+    books = await book_service.get_user_books(user_uid, session)
+    return books
+
 
 # create a new book
 @book_router.post("/", status_code=status.HTTP_201_CREATED, response_model=Book, dependencies=[role_checker])
-async def add_book(book_data: BookCreate, session: AsyncSession = Depends(get_session)):
-    return await service.create_book(session, book_data)
+async def add_book(book_data: BookCreate, session: AsyncSession = Depends(get_session), user_details: dict = Depends(AccessTokenScheme())):
+    user_id = user_details.get("user")["user_uid"]
+    new_book = await service.create_book(session, user_id,book_data)
+
+    return new_book
 
 
 # get a book by UID
-@book_router.get("/{book_uid}", response_model=Book, status_code=status.HTTP_200_OK, dependencies=[role_checker])
-async def get_book_by_uid(book_uid: uuid.UUID, session: AsyncSession = Depends(get_session)):
+@book_router.get("/{book_uid}", response_model=Book, status_code=status.HTTP_200_OK, dependencies=[role_checker],)
+async def get_book_by_uid(book_uid: uuid.UUID, session: AsyncSession = Depends(get_session), user_details: dict = Depends(AccessTokenScheme())):
     return await service.get_book_by_uid(session, book_uid)
 
 
 # update a book by UID
 @book_router.patch("/{book_uid}", response_model=Book, status_code=status.HTTP_200_OK, dependencies=[role_checker])
-async def update_book(book_uid: uuid.UUID, book_data: BookUpdate, session: AsyncSession = Depends(get_session)):
+async def update_book(book_uid: uuid.UUID, book_data: BookUpdate, session: AsyncSession = Depends(get_session), user_details: dict = Depends(AccessTokenScheme())):
     return await service.update_book(session, book_uid, book_data)
 
 
 # delete a book by UID
 @book_router.delete("/{book_uid}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[role_checker])
-async def delete_book(book_uid: uuid.UUID, session: AsyncSession = Depends(get_session)):
+async def delete_book(book_uid: uuid.UUID, session: AsyncSession = Depends(get_session), user_details: dict = Depends(AccessTokenScheme())):
     return await service.delete_book(session, book_uid)
