@@ -13,6 +13,7 @@ from src.db.redis import add_jti_to_blocklist, token_in_blocklist
 from src.auth.dependencies import get_current_user
 from .dependencies import RoleChecker
 from typing import Any
+from src.auth.schemas import UserBooksModel
 
 auth = APIRouter()
 
@@ -67,7 +68,7 @@ async def login(user_data: UserLoginModel, session: AsyncSession = Depends(get_s
 
 
 
-@auth.get("/me", response_model=UserModel)
+@auth.get("/me", response_model=UserBooksModel)
 async def get_current_user_info(current_user: UserModel = Depends(get_current_user),_bool: Any = Depends(role_checker)):
     return current_user
 

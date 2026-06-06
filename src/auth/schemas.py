@@ -4,6 +4,7 @@ from typing import List
 from datetime import datetime, date
 import uuid
 from src.books.schema import BookCreate
+from src.books.schema import Book
 
 
 class UserCreateModel(BaseModel):
@@ -21,9 +22,11 @@ class UserModel(BaseModel):
     last_name: str
     role: str
     created_at: datetime
-    books: Optional[List[BookCreate]] = None
 
     model_config = {"from_attributes": True}
+
+class UserBooksModel(UserModel):
+    books: List[Book]    
 
 
 

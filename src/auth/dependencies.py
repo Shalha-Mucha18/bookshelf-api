@@ -8,7 +8,7 @@ from src.db.redis import token_in_blocklist
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.auth.service import AuthService
 from typing import List, Any
-from src.auth.models import User
+from src.db.models import User
 from src.auth.exceptions import AccountNotVerified, InsufficientPermission
 
 user_service = AuthService()
