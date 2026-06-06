@@ -1,7 +1,9 @@
 from pydantic import BaseModel, Field
 from typing import Optional
+from typing import List
 from datetime import datetime, date
 import uuid
+from src.books.schema import BookCreate
 
 
 class UserCreateModel(BaseModel):
@@ -19,6 +21,7 @@ class UserModel(BaseModel):
     last_name: str
     role: str
     created_at: datetime
+    books: Optional[List[BookCreate]] = None
 
     model_config = {"from_attributes": True}
 
