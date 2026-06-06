@@ -2,10 +2,14 @@ from datetime import datetime, date, timezone
 from sqlmodel import SQLModel, Field, Column
 import sqlalchemy.dialects.postgresql as pg
 import uuid
+from typing import TYPE_CHECKING, List
+from sqlmodel import Relationship
+
+if TYPE_CHECKING:
+    from src.books.models import Book
 
 # User model for authentication and user management
 class User(SQLModel, table=True):
-    __tablename = "users"
     uid: uuid.UUID = Field(
         default_factory=uuid.uuid4,
         sa_column=Column(
@@ -26,6 +30,8 @@ class User(SQLModel, table=True):
     is_verified: bool = Field(default=False)
     created_at: datetime = Field(sa_column=Column(pg.TIMESTAMP(timezone=True), default=datetime.now(timezone.utc)))
     updated_at: datetime = Field(sa_column=Column(pg.TIMESTAMP(timezone=True), default=datetime.now(timezone.utc)))
+
+    books: List["Book"] = Relationship(back_populates="user", sa_relationship_kwargs={"lazy": "selectin"})
 
 
     def __repr__(self):
