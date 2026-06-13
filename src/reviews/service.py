@@ -1,12 +1,11 @@
 from sqlmodel.ext.asyncio.session import AsyncSession
-from fastapi.exceptions import HTTPException
-from fastapi import status
 from sqlmodel import select, desc
 
 from src.auth.service import AuthService
 from src.books.service import BookService
 from src.db.models import Review
 from .schemas import ReviewCreateModel
+from error import UserNotFound, InsufficientPermission
 
 
 book_service = BookService()
@@ -26,9 +25,7 @@ class ReviewService:
         user = await user_service.get_user_by_mail(session=session, email=user_email)
 
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
+            raise UserNotFound()
 
         review_data_dict = review_data.model_dump()
         new_book_review = Review(
@@ -58,10 +55,7 @@ class ReviewService:
         review = await self.get_review(review_uid, session)
 
         if not review or (review.user != user):
-            raise HTTPException(
-                detail="Cannot delete this review",
-                status_code=status.HTTP_403_FORBIDDEN,
-            )
+            raise InsufficientPermission()
 
         await session.delete(review)
         await session.commit()
