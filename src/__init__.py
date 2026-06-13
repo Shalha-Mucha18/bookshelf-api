@@ -5,6 +5,8 @@ from src.db.main import init_db
 from src.auth.routers import auth
 from src.reviews.routers import reviews_router
 from src.tags.routes import tags_router
+from error import register_error_handlers 
+
 
 @asynccontextmanager
 async def life_span(app: FastAPI):
@@ -23,6 +25,9 @@ app = FastAPI(
     description="A simple API for managing a book catalog",
 )
 
+
+
+register_error_handlers(app)  
 app.include_router(book_router, prefix=f"/api/v{version}/books", tags=["Books"])
 app.include_router(auth, prefix=f"/api/v{version}/auth", tags=["Auth"])
 app.include_router(reviews_router, prefix=f"/api/v{version}/reviews", tags=["Reviews"])
