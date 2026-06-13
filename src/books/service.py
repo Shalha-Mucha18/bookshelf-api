@@ -1,11 +1,10 @@
 import uuid
-
-from fastapi import HTTPException, status
 from sqlmodel import select, desc
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.db.models import Book
 from .schema import BookCreate, BookUpdate
+from error import BookNotFound
 
 
 class BookService:
@@ -20,7 +19,7 @@ class BookService:
         result = await session.execute(statement)
         book = result.scalars().first()
         if not book:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
+            raise BookNotFound()
         return book
 
     async def create_book(self, session: AsyncSession, user_id: uuid.UUID, book: BookCreate) -> Book:
