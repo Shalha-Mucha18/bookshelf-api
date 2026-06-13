@@ -1,10 +1,10 @@
 import uuid
-from fastapi import HTTPException, status
 from sqlmodel import select, desc
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.db.models import Tag, Book, BookTag
 from .schemas import TagCreateModel, TagAddModel
+from error import TagNotFound, BookNotFound
 
 
 class TagService:
@@ -19,9 +19,7 @@ class TagService:
         result = await session.execute(statement)
         tag = result.scalars().first()
         if not tag:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found"
-            )
+            raise TagNotFound()
         return tag
 
     async def add_tag(self, tag_data: TagCreateModel, session: AsyncSession) -> Tag:
@@ -55,9 +53,7 @@ class TagService:
         book = result.scalars().first()
 
         if not book:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
-            )
+            raise BookNotFound()
 
         for tag_uid in tag_data.tag_uids:
             tag = await self.get_tag_by_uid(session, tag_uid)
