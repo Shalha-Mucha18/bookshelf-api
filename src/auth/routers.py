@@ -4,7 +4,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from .service import AuthService
 from .utils import create_access_token
 from src.db.main import get_session
-from fastapi import HTTPException, status
+from fastapi import status
 from datetime import timedelta
 from fastapi.responses import JSONResponse
 from .dependencies import AccessTokenScheme, RefreshTokenScheme
@@ -14,6 +14,7 @@ from src.auth.dependencies import get_current_user
 from .dependencies import RoleChecker
 from typing import Any
 from src.auth.schemas import UserBooksModel
+from error import UserAlreadyExists, InvalidCredentials, InvalidToken
 
 auth = APIRouter()
 
@@ -28,7 +29,7 @@ REFRESH_TOKEN_EXPIRY = 2
 async def sign_up(user_data: UserCreateModel,session: AsyncSession = Depends(get_session)):
     user_eamil = user_data.email
     if await auth_service.user_exists(session, user_eamil):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User with this email already exists")
+        raise UserAlreadyExists()
     
     new_user = await auth_service.create_user(session, user_data)
     return new_user
@@ -63,7 +64,7 @@ async def login(user_data: UserLoginModel, session: AsyncSession = Depends(get_s
                 }
             )
 
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+    raise InvalidCredentials()
 
 
 
@@ -81,7 +82,7 @@ async def refresh_token(token_data=Depends(RefreshTokenScheme())):
 
 
     if expiery_time and datetime.datetime.fromtimestamp(expiery_time) < datetime.datetime.now():
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token has expired")
+        raise InvalidToken()
     
     new_access_token = create_access_token(user_data =token_data['user'])
 
@@ -96,6 +97,6 @@ async def logout(token_data=Depends(AccessTokenScheme())):
     if jti:
         await add_jti_to_blocklist(jti)
         return JSONResponse(content={"message": "Logout successful"})
-    
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token data")
+
+    raise InvalidToken()
 
