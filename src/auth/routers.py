@@ -54,6 +54,8 @@ async def sign_up(
     html_message = f"""
     <h1>Verify your Email</h1>
     <p>Please click this <a href="{link}">link</a> to verify your email</p>
+    <p>Or copy this URL into your browser:</p>
+    <p>{link}</p>
     """
 
     message = create_message(
