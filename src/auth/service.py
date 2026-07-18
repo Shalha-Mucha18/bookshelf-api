@@ -16,11 +16,17 @@ class AuthService:
     
     async def user_exists(self, session: AsyncSession, email: str) -> bool:
         user = await self.get_user_by_mail(session, email)
-        
+
         if user is not None:
             return True
         else:
             return False
+
+    async def username_exists(self, session: AsyncSession, username: str) -> bool:
+        statement = select(User).where(User.username == username)
+        result = await session.exec(statement)
+
+        return result.first() is not None
 
     async def create_user(self, session: AsyncSession, user_data: UserCreateModel) -> User:
         user_data_dict = user_data.model_dump()
