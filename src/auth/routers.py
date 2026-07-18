@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from .schemas import UserCreateModel, UserModel, UserLoginModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 from .service import AuthService
@@ -14,7 +14,14 @@ from src.auth.dependencies import get_current_user
 from .dependencies import RoleChecker
 from typing import Any
 from src.auth.schemas import UserBooksModel
-from error import UserAlreadyExists, InvalidCredentials, InvalidToken
+from error import UserAlreadyExists, UsernameAlreadyExists, InvalidCredentials, InvalidToken
+from src.mail import mail, create_message
+from src.auth.schemas import EmailModel
+from src.books.config import settings as Config
+from .utils import (
+    create_url_safe_token,
+    decode_url_safe_token,
+)
 
 auth = APIRouter()
 
@@ -24,17 +31,62 @@ role_checker = RoleChecker(allowed_roles=["admin", "user"])
 
 REFRESH_TOKEN_EXPIRY = 2
 
+@auth.post("/sign-up", status_code=status.HTTP_201_CREATED)
+async def sign_up(
+    user_data: UserCreateModel,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_session),
+):
+    email = user_data.email
 
-@auth.post("/sign-up", response_model=UserModel, status_code=status.HTTP_201_CREATED)
-async def sign_up(user_data: UserCreateModel,session: AsyncSession = Depends(get_session)):
-    user_eamil = user_data.email
-    if await auth_service.user_exists(session, user_eamil):
+    if await auth_service.user_exists(session, email):
         raise UserAlreadyExists()
-    
-    new_user = await auth_service.create_user(session, user_data)
-    return new_user
 
-@auth.post("/loogin")
+    if await auth_service.username_exists(session, user_data.username):
+        raise UsernameAlreadyExists()
+
+    new_user = await auth_service.create_user(session, user_data)
+
+    token = create_url_safe_token({"email": email})
+
+    link = f"http://{Config.DOMAIN}/api/v1.0.0/auth/verify/{token}"
+
+    html_message = f"""
+    <h1>Verify your Email</h1>
+    <p>Please click this <a href="{link}">link</a> to verify your email</p>
+    """
+
+    message = create_message(
+        recipients=[email], subject="Verify your email", body=html_message
+    )
+
+    background_tasks.add_task(mail.send_message, message)
+
+    return {
+        "message": "Account Created! Check email to verify your account",
+        "user": UserModel.model_validate(new_user),
+    }
+
+
+@auth.get("/verify/{token}")
+async def verify_email(token: str, session: AsyncSession = Depends(get_session)):
+    token_data = decode_url_safe_token(token)
+
+    if token_data is None:
+        raise InvalidToken()
+
+    user = await auth_service.get_user_by_mail(session, token_data["email"])
+
+    if user is None:
+        raise InvalidToken()
+
+    user.is_verified = True
+    session.add(user)
+    await session.commit()
+
+    return JSONResponse(content={"message": "Account verified successfully"})
+
+@auth.post("/login")
 async def login(user_data: UserLoginModel, session: AsyncSession = Depends(get_session)):
     user_email = user_data.email
     user_password = user_data.password
@@ -100,3 +152,15 @@ async def logout(token_data=Depends(AccessTokenScheme())):
 
     raise InvalidToken()
 
+
+@auth.post("/send_mail")
+async def send_mail(email_data: EmailModel, _admin: Any = Depends(RoleChecker(allowed_roles=["admin"]))):
+    recipients = email_data.addresses
+
+    html = "<h1>Welcome to the app</h1>"
+    subject = "Welcome to our app"
+
+    message = create_message(recipients=recipients, subject=subject, body=html)
+    await mail.send_message(message)
+
+    return {"message": "Email sent successfully"}
