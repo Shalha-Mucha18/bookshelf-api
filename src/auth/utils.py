@@ -7,8 +7,11 @@ from src.books.config import settings as Config
 
 
 ACCESS_TOKEN_EXPIRY = 20 * 60  # 20 minutes
+URL_SAFE_TOKEN_MAX_AGE = 24 * 3600  # verification links valid for 24 hours
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+url_safe_serializer = URLSafeTimedSerializer(secret_key=Config.JWT_SECRET, salt="email-verification")
 
 
 def generated_password_hash(password: str) -> str:
@@ -30,25 +33,12 @@ def create_access_token(user_data: dict, expiry: timedelta = None, refresh: bool
     payload["jti"] = str(uuid.uuid4())
 
     payload["refresh"] = refresh
-    
+
     token = jwt.encode(
         payload=payload, key=Config.JWT_SECRET, algorithm=Config.JWT_ALGORITHM
     )
 
     return token
-
-url_safe_serializer = URLSafeTimedSerializer(secret_key=Config.JWT_SECRET, salt="email-verification")
-
-
-def create_url_safe_token(data: dict) -> str:
-    return url_safe_serializer.dumps(data)
-
-
-def decode_url_safe_token(token: str, max_age: int = 86400) -> dict | None:
-    try:
-        return url_safe_serializer.loads(token, max_age=max_age)
-    except BadSignature:
-        return None
 
 
 def decode_access_token(token: str) -> dict:
@@ -59,3 +49,15 @@ def decode_access_token(token: str) -> dict:
         raise Exception("Token has expired")
     except jwt.InvalidTokenError:
         raise Exception("Invalid token")
+
+
+def create_url_safe_token(data: dict) -> str:
+    return url_safe_serializer.dumps(data)
+
+
+def decode_url_safe_token(token: str, max_age: int = URL_SAFE_TOKEN_MAX_AGE) -> dict | None:
+    try:
+        # BadTimeSignature (expired) is a subclass of BadSignature
+        return url_safe_serializer.loads(token, max_age=max_age)
+    except BadSignature:
+        return None
