@@ -1,4 +1,5 @@
 from passlib.context import CryptContext
+from itsdangerous import URLSafeTimedSerializer, BadSignature
 import jwt
 import uuid
 from datetime import datetime, timedelta
@@ -36,6 +37,20 @@ def create_access_token(user_data: dict, expiry: timedelta = None, refresh: bool
 
     return token
 
+url_safe_serializer = URLSafeTimedSerializer(secret_key=Config.JWT_SECRET, salt="email-verification")
+
+
+def create_url_safe_token(data: dict) -> str:
+    return url_safe_serializer.dumps(data)
+
+
+def decode_url_safe_token(token: str, max_age: int = 86400) -> dict | None:
+    try:
+        return url_safe_serializer.loads(token, max_age=max_age)
+    except BadSignature:
+        return None
+
+
 def decode_access_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, key=Config.JWT_SECRET, algorithms=[Config.JWT_ALGORITHM])
@@ -44,5 +59,3 @@ def decode_access_token(token: str) -> dict:
         raise Exception("Token has expired")
     except jwt.InvalidTokenError:
         raise Exception("Invalid token")
-
-        
