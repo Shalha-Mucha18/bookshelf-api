@@ -1,4 +1,4 @@
-# 📚 Bookly — Bookshelf App
+# Bookly 
 
 A full-stack book catalogue: track the books you own, rate and review them, and organise your shelf with tags. Email-verified accounts, JWT authentication, and asynchronous email delivery via Celery.
 
@@ -10,8 +10,8 @@ bookshelf-api/
 
 ## Features
 
-- **Accounts** — sign-up with email verification, JWT login (access + refresh tokens), logout with server-side token revocation, password reset by email
-- **Books** — add, edit, delete and browse books with search and generated cover art
+- **Accounts** — sign up with email verification, JWT login (access + refresh tokens), logout with server-side token revocation, password reset by email
+- **Books** — add, edit, delete, and browse books with search and generated cover art
 - **Reviews** — 1–5 star ratings with text reviews, per-book averages
 - **Tags** — create tags (admin) and attach them to books
 - **Email** — verification and password-reset emails sent asynchronously through a Celery worker over Gmail SMTP
