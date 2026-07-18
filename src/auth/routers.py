@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from .schemas import (
     UserCreateModel,
     UserModel,
@@ -28,6 +28,7 @@ from .utils import (
     create_url_safe_token,
     decode_url_safe_token,
 )
+from src.celery_tasks import send_email
 
 auth = APIRouter()
 
@@ -40,9 +41,13 @@ REFRESH_TOKEN_EXPIRY = 2
 @auth.post("/sign-up", status_code=status.HTTP_201_CREATED)
 async def sign_up(
     user_data: UserCreateModel,
-    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
 ):
+    """
+    Create user account using email, username, first_name, last_name
+    params:
+        user_data: UserCreateModel
+    """
     email = user_data.email
 
     if await auth_service.user_exists(session, email):
@@ -57,24 +62,21 @@ async def sign_up(
 
     link = f"http://{Config.DOMAIN}/api/v1.0.0/auth/verify/{token}"
 
-    html_message = f"""
+    html = f"""
     <h1>Verify your Email</h1>
     <p>Please click this <a href="{link}">link</a> to verify your email</p>
     <p>Or copy this URL into your browser:</p>
     <p>{link}</p>
     """
 
-    message = create_message(
-        recipients=[email], subject="Verify your email", body=html_message
-    )
+    subject = "Verify Your email"
 
-    background_tasks.add_task(mail.send_message, message)
+    send_email.delay([email], subject, html)
 
     return {
         "message": "Account Created! Check email to verify your account",
         "user": UserModel.model_validate(new_user),
     }
-
 
 @auth.get("/verify/{token}")
 async def verify_email(token: str, session: AsyncSession = Depends(get_session)):
@@ -168,15 +170,14 @@ async def send_mail(email_data: EmailModel, _admin: Any = Depends(RoleChecker(al
     html = "<h1>Welcome to the app</h1>"
     subject = "Welcome to our app"
 
-    message = create_message(recipients=recipients, subject=subject, body=html)
-    await mail.send_message(message)
+    send_email.delay(recipients, subject, html)
 
     return {"message": "Email sent successfully"}
+
 
 @auth.post("/password-reset-request")
 async def password_reset_request(
     email_data: PasswordResetRequestModel,
-    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
 ):
     email = email_data.email
@@ -196,8 +197,7 @@ async def password_reset_request(
         """
         subject = "Reset Your Password"
 
-        message = create_message(recipients=[email], subject=subject, body=html_message)
-        background_tasks.add_task(mail.send_message, message)
+        send_email.delay([email], subject, html_message)
 
     return JSONResponse(
         content={
