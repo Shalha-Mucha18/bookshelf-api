@@ -26,14 +26,14 @@ async def get_user_book_submissions(
     session: AsyncSession = Depends(get_session),
     _: dict = Depends(AccessTokenScheme()),
 ):
-    books = await book_service.get_user_books(user_uid, session)
+    books = await service.get_user_books(user_uid, session)
     return books
 
 
 # create a new book
 @book_router.post("/", status_code=status.HTTP_201_CREATED, response_model=Book, dependencies=[role_checker])
 async def add_book(book_data: BookCreate, session: AsyncSession = Depends(get_session), user_details: dict = Depends(AccessTokenScheme())):
-    user_id = user_details.get("user")["user_uid"]
+    user_id = user_details.get("user")["user_id"]
     new_book = await service.create_book(session, user_id,book_data)
 
     return new_book

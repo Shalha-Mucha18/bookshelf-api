@@ -3,6 +3,7 @@ from typing import Optional
 from datetime import datetime, date
 import uuid
 from src.reviews.schemas import ReviewModel
+from src.tags.schemas import TagModel
 
 class Book(BaseModel):
     uid: uuid.UUID
@@ -16,7 +17,8 @@ class Book(BaseModel):
     updated_at: datetime
 
 class BookDetails(Book):
-    reviews: list[ReviewModel]   
+    reviews: list[ReviewModel]
+    tags: list[TagModel] = []
 
 
 class BookCreate(BaseModel):

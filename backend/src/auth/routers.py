@@ -60,7 +60,7 @@ async def sign_up(
 
     token = create_url_safe_token({"email": email})
 
-    link = f"http://{Config.DOMAIN}/api/v1.0.0/auth/verify/{token}"
+    link = f"http://{Config.DOMAIN}/verify/{token}"
 
     html = f"""
     <h1>Verify your Email</h1>
@@ -187,7 +187,7 @@ async def password_reset_request(
     if await auth_service.user_exists(session, email):
         token = create_url_safe_token({"email": email})
 
-        link = f"http://{Config.DOMAIN}/api/v1.0.0/auth/password-reset-confirm/{token}"
+        link = f"http://{Config.DOMAIN}/password-reset-confirm/{token}"
 
         html_message = f"""
         <h1>Reset Your Password</h1>
