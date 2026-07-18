@@ -38,9 +38,9 @@ class EmailModel(BaseModel):
     addresses: List[EmailStr]
 
 class PasswordResetRequestModel(BaseModel):
-    email: str
+    email: EmailStr
 
 
 class PasswordResetConfirmModel(BaseModel):
-    new_password: str
-    confirm_new_password: str    
+    new_password: str = Field(min_length=8, max_length=128)
+    confirm_new_password: str = Field(min_length=8, max_length=128)
