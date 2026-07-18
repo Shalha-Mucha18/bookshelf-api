@@ -29,6 +29,11 @@ class UserAlreadyExists(BooklyException):
     pass
 
 
+class UsernameAlreadyExists(BooklyException):
+    """User has provided a username that is already taken during sign up."""
+    pass
+
+
 class InvalidCredentials(BooklyException):
     """User has provided wrong email or password during log in."""
     pass
@@ -73,6 +78,17 @@ def register_error_handlers(app: FastAPI):
             initial_detail={
                 "message": "User with email already exists",
                 "error_code": "user_exists",
+            },
+        ),
+    )
+
+    app.add_exception_handler(
+        UsernameAlreadyExists,
+        create_exception_handler(
+            status_code=status.HTTP_403_FORBIDDEN,
+            initial_detail={
+                "message": "User with username already exists",
+                "error_code": "username_exists",
             },
         ),
     )
