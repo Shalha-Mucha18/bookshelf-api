@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from typing import List
 from datetime import datetime, date
@@ -10,7 +10,7 @@ from src.reviews.schemas import ReviewModel
 
 class UserCreateModel(BaseModel):
     username: str = Field(max_length=50)
-    email: str = Field(max_length=100)
+    email: EmailStr = Field(max_length=100)
     first_name: str = Field(max_length=50)
     last_name: str = Field(max_length=50)
     password: str = Field(min_length=8, max_length=128)
@@ -31,5 +31,8 @@ class UserBooksModel(UserModel):
     reviews: List[ReviewModel]
   
 class UserLoginModel(BaseModel):
-    email: str = Field(max_length=40)
-    password: str = Field(min_length=6)      
+    email: EmailStr = Field(max_length=100)
+    password: str = Field(min_length=6)
+
+class EmailModel(BaseModel):
+    addresses: List[EmailStr]
