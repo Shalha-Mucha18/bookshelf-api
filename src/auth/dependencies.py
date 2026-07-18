@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.auth.service import AuthService
 from typing import List, Any
 from src.db.models import User
-from error import InvalidToken, AccessTokenRequired, RefreshTokenRequired, InsufficientPermission
+from error import InvalidToken, AccessTokenRequired, RefreshTokenRequired, InsufficientPermission, AccountNotVerified
 
 user_service = AuthService()
 
@@ -69,7 +69,8 @@ class RoleChecker:
         self.allowed_roles = allowed_roles
 
     def __call__(self, current_user: User = Depends(get_current_user)) -> Any:
+        if not current_user.is_verified:
+            raise AccountNotVerified()
         if current_user.role in self.allowed_roles:
             return True
-
         raise InsufficientPermission()
