@@ -1,67 +1,25 @@
-<div align="center">
+# 📚 Bookly — Bookshelf App
 
-# 📚 Bookly
-
-### Your bookshelf, beautifully organised.
-
-A full-stack book catalogue — track the books you own, rate and review what you've read, and tag your collection so you can always find the right book.
-
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.139-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)](https://redis.io/)
-[![Celery](https://img.shields.io/badge/Celery-5-37814A?logo=celery&logoColor=white)](https://docs.celeryq.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-
-[Features](#-features) · [Architecture](#-architecture) · [Quick start](#-quick-start) · [API reference](#-api-reference) · [Project layout](#-project-layout)
-
-</div>
-
----
-
-## ✨ Features
-
-| | |
-|---|---|
-| 🔐 **Secure accounts** | Email-verified sign-up, JWT access + refresh tokens, server-side token revocation on logout, and password reset by email |
-| 📖 **Book catalogue** | Add, edit, delete and browse books with instant search and generated cover art |
-| ⭐ **Reviews & ratings** | 1–5 star ratings with written reviews and live per-book averages |
-| 🏷️ **Flexible tagging** | Group books by genre, mood or project; attach tags from the book page |
-| ✉️ **Async email** | Verification and password-reset emails delivered through a Celery worker — API responses never wait on SMTP |
-| 👥 **Role-based access** | `user` / `admin` roles; unverified accounts are gated from protected endpoints |
-| 🌗 **Polished UI** | Responsive Next.js interface with dark-mode support and a warm, library-inspired design |
-
-## 🏗 Architecture
+A full-stack book catalogue: track the books you own, rate and review them, and organise your shelf with tags. Email-verified accounts, JWT authentication, and asynchronous email delivery via Celery.
 
 ```
-                ┌──────────────────────┐
-                │   Next.js frontend   │  ← React 19 · TypeScript · Tailwind
-                │   localhost:3000     │
-                └──────────┬───────────┘
-                           │ REST + JWT
-                ┌──────────▼───────────┐
-                │    FastAPI backend   │  ← SQLModel · Pydantic v2 · async
-                │    localhost:8000    │
-                └───┬──────────────┬───┘
-                    │              │ enqueue
-          ┌─────────▼──┐      ┌───▼────────┐      ┌──────────────┐
-          │ PostgreSQL │      │   Redis    │◄─────┤Celery worker │
-          │  (asyncpg) │      │broker + JWT│ jobs │ (SMTP email) │
-          └────────────┘      │ blocklist  │      └──────────────┘
-                              └────────────┘
+bookshelf-api/
+├── backend/     FastAPI + PostgreSQL + Redis + Celery
+└── frontend/    Next.js (App Router) + TypeScript + Tailwind CSS
 ```
 
-- **Two independent apps, one repo** — `backend/` (FastAPI) and `frontend/` (Next.js) communicate only over HTTP, so each can be developed, tested and deployed on its own.
-- **Stateless auth** — short-lived access tokens (20 min) are refreshed transparently by the frontend using a 2-day refresh token; revoked tokens are tracked in a Redis blocklist.
-- **Email off the hot path** — sign-up and password-reset requests enqueue a Celery task and return immediately; the worker handles Gmail SMTP delivery and retries.
+## Features
 
-## 🚀 Quick start
+- **Accounts** — sign-up with email verification, JWT login (access + refresh tokens), logout with server-side token revocation, password reset by email
+- **Books** — add, edit, delete and browse books with search and generated cover art
+- **Reviews** — 1–5 star ratings with text reviews, per-book averages
+- **Tags** — create tags (admin) and attach them to books
+- **Email** — verification and password-reset emails sent asynchronously through a Celery worker over Gmail SMTP
+- **Roles** — `user` / `admin`; unverified accounts are blocked from protected endpoints
 
-### Prerequisites
+## Tech stack
 
-| Tool | Version |
+| Layer | Technology |
 |---|---|
 | Python + [uv](https://docs.astral.sh/uv/) | 3.14+ |
 | Node.js | 20+ |
