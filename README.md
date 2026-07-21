@@ -1,38 +1,79 @@
-# 📚 Bookly — Bookshelf App
+# Bookly
 
-A full-stack book catalogue: track the books you own, rate and review them, and organise your shelf with tags. Email-verified accounts, JWT authentication, and asynchronous email delivery via Celery.
+**A full-stack book catalogue application.** Track the books you own, rate and review what you've read, and organise your collection with tags — behind email-verified accounts and JWT authentication, with all transactional email delivered asynchronously.
 
-```
-bookshelf-api/
-├── backend/     FastAPI + PostgreSQL + Redis + Celery
-└── frontend/    Next.js (App Router) + TypeScript + Tailwind CSS
-```
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.139-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)](https://redis.io/)
+[![Celery](https://img.shields.io/badge/Celery-5-37814A?logo=celery&logoColor=white)](https://docs.celeryq.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+
+## Table of contents
+
+- [Features](#features)
+- [Architecture](#architecture)
+- [Getting started](#getting-started)
+- [Running the application](#running-the-application)
+- [API reference](#api-reference)
+- [Project structure](#project-structure)
+- [Tech stack](#tech-stack)
 
 ## Features
 
-- **Accounts** — sign-up with email verification, JWT login (access + refresh tokens), logout with server-side token revocation, password reset by email
-- **Books** — add, edit, delete and browse books with search and generated cover art
-- **Reviews** — 1–5 star ratings with text reviews, per-book averages
-- **Tags** — create tags (admin) and attach them to books
-- **Email** — verification and password-reset emails sent asynchronously through a Celery worker over Gmail SMTP
-- **Roles** — `user` / `admin`; unverified accounts are blocked from protected endpoints
+- **Secure authentication** — email-verified sign-up, JWT access and refresh tokens, server-side token revocation on logout, and password reset by email
+- **Book catalogue** — create, edit, delete and browse books with instant search
+- **Reviews and ratings** — 1–5 star ratings with written reviews and per-book averages
+- **Tagging** — organise books by genre, mood or project with flexible tags
+- **Asynchronous email** — verification and password-reset emails are dispatched through a Celery worker, keeping API responses fast
+- **Role-based access control** — `user` and `admin` roles; unverified accounts are gated from protected endpoints
+- **Modern interface** — responsive Next.js UI with dark-mode support
 
-## Tech stack
+## Architecture
 
-| Layer | Technology |
+```
+                ┌──────────────────────┐
+                │   Next.js frontend   │   React 19 · TypeScript · Tailwind
+                │   localhost:3000     │
+                └──────────┬───────────┘
+                           │ REST + JWT
+                ┌──────────▼───────────┐
+                │   FastAPI backend    │   SQLModel · Pydantic v2 · async
+                │   localhost:8000     │
+                └───┬──────────────┬───┘
+                    │              │ enqueue
+          ┌─────────▼──┐      ┌───▼────────┐      ┌───────────────┐
+          │ PostgreSQL │      │   Redis    │◄─────┤ Celery worker │
+          │  (asyncpg) │      │ broker +   │ jobs │  (SMTP email) │
+          └────────────┘      │ blocklist  │      └───────────────┘
+                              └────────────┘
+```
+
+**Design notes**
+
+- The backend and frontend are independent applications that communicate only over HTTP, so each can be developed, tested and deployed separately.
+- Authentication is stateless: short-lived access tokens (20 minutes) are refreshed transparently by the frontend using a 2-day refresh token. Revoked tokens are tracked in a Redis blocklist checked on every authenticated request.
+- Email never blocks a request: sign-up and password-reset endpoints enqueue a Celery task and return immediately; the worker handles SMTP delivery.
+
+## Getting started
+
+### Prerequisites
+
+| Requirement | Version |
 |---|---|
-| Python + [uv](https://docs.astral.sh/uv/) | 3.14+ |
+| Python with [uv](https://docs.astral.sh/uv/) | 3.14+ |
 | Node.js | 20+ |
 | PostgreSQL | 17 |
-| Redis | 7 — e.g. `docker run -d --name bookshelf-redis -p 6379:6379 redis:7` |
+| Redis | 7 (e.g. `docker run -d --name bookshelf-redis -p 6379:6379 redis:7`) |
 
-### 1 · Database
+### 1. Create the database
 
 ```bash
 createdb bookshelf
 ```
 
-### 2 · Backend
+### 2. Configure the backend
 
 ```bash
 cd backend
@@ -44,7 +85,7 @@ Create `backend/.env`:
 
 ```ini
 DATABASE_URL=postgresql+asyncpg://<user>:<password>@localhost:5432/bookshelf
-JWT_SECRET=<generate: python -c "import secrets; print(secrets.token_hex(32))">
+JWT_SECRET=<generate with: python -c "import secrets; print(secrets.token_hex(32))">
 JWT_ALGORITHM=HS256
 REDIS_HOST=localhost
 REDIS_PORT=6379
@@ -56,155 +97,136 @@ MAIL_PORT=587
 MAIL_FROM=<your gmail address>
 MAIL_FROM_NAME=Bookly
 
-# Where email links point (the frontend dev server)
+# Host that email links point to (the frontend dev server)
 DOMAIN=localhost:3000
 ```
 
 > [!IMPORTANT]
-> Gmail SMTP rejects regular account passwords. Enable 2-Step Verification, then create an **app password** at [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) and paste the 16-character code without spaces.
+> Gmail SMTP rejects regular account passwords. Enable 2-Step Verification, then create an **app password** at [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) and use the 16-character code (without spaces) as `MAIL_PASSWORD`.
 
-Initialise the tables (first run only):
+Initialise the database tables (first run only):
 
 ```bash
 .venv/bin/python -c "import asyncio; from src.db.main import init_db; asyncio.run(init_db())"
 ```
 
-### 3 · Frontend
+### 3. Configure the frontend
 
 ```bash
 cd frontend
 npm install
 ```
 
-`frontend/.env.local` (adjust only if your API runs elsewhere):
+`frontend/.env.local` — adjust only if the API runs on a different host:
 
 ```ini
 NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1.0.0
 ```
 
-### 4 · Run
+## Running the application
 
-Three processes, three terminals:
+Start three processes in separate terminals:
 
 ```bash
-# API — http://localhost:8000 (Swagger UI at /docs)
+# API server — http://localhost:8000 (Swagger UI at /docs)
 cd backend && .venv/bin/uvicorn main:app --reload
 
-# Celery worker — delivers verification & reset emails
+# Celery worker — delivers verification and password-reset emails
 cd backend && .venv/bin/celery -A src.celery_tasks.c_app worker --loglevel=INFO
 
 # Frontend — http://localhost:3000
 cd frontend && npm run dev
 ```
 
-Open **http://localhost:3000** → sign up → click the verification link in your inbox → log in → start shelving. 🎉
+Open **http://localhost:3000**, create an account, follow the verification link sent to your inbox, and log in.
 
-<details>
-<summary><strong>Promoting an admin</strong></summary>
-
-New accounts get the `user` role. Creating tags and the broadcast `/send_mail` endpoint require `admin`:
+**Promoting an administrator** — new accounts receive the `user` role. Tag creation and the broadcast email endpoint require `admin`:
 
 ```bash
 psql -d bookshelf -c "UPDATE \"user\" SET role='admin' WHERE email='<your email>';"
 ```
 
-</details>
+## API reference
 
-## 📡 API reference
+All routes are prefixed with `/api/v1.0.0`. Interactive documentation is served at [localhost:8000/docs](http://localhost:8000/docs). Authenticated endpoints expect an `Authorization: Bearer <access token>` header; the frontend's API client attaches and refreshes tokens automatically.
 
-All routes are prefixed with `/api/v1.0.0` — interactive docs at [localhost:8000/docs](http://localhost:8000/docs).
-
-<details open>
-<summary><strong>Auth</strong></summary>
+### Auth
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/auth/sign-up` | Create an account & send verification email |
+| `POST` | `/auth/sign-up` | Create an account and send a verification email |
 | `GET` | `/auth/verify/{token}` | Activate an account from the emailed link |
-| `POST` | `/auth/login` | Exchange credentials for access + refresh tokens |
+| `POST` | `/auth/login` | Exchange credentials for access and refresh tokens |
 | `POST` | `/auth/refresh` | Mint a new access token from a refresh token |
-| `POST` | `/auth/logout` | Revoke the current token (Redis blocklist) |
-| `GET` | `/auth/me` | Current profile with books & reviews |
-| `POST` | `/auth/password-reset-request` | Email a password-reset link |
+| `POST` | `/auth/logout` | Revoke the current token |
+| `GET` | `/auth/me` | Current user's profile with books and reviews |
+| `POST` | `/auth/password-reset-request` | Send a password-reset link |
 | `POST` | `/auth/password-reset-confirm/{token}` | Set a new password |
-| `POST` | `/auth/send_mail` | Broadcast an email — **admin only** |
+| `POST` | `/auth/send_mail` | Broadcast an email *(admin)* |
 
-</details>
-
-<details>
-<summary><strong>Books</strong></summary>
+### Books
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/books/` | List all books with reviews & tags |
-| `POST` | `/books/` | Add a book to your shelf |
-| `GET` | `/books/{uid}` | Book detail |
+| `GET` | `/books/` | List all books with reviews and tags |
+| `POST` | `/books/` | Add a book |
+| `GET` | `/books/{uid}` | Retrieve a single book |
 | `PATCH` | `/books/{uid}` | Update a book |
-| `DELETE` | `/books/{uid}` | Remove a book |
+| `DELETE` | `/books/{uid}` | Delete a book |
 
-</details>
-
-<details>
-<summary><strong>Reviews</strong></summary>
+### Reviews
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/reviews/book/{book_uid}` | Review a book (1–5 stars + text) |
-| `GET` | `/reviews/{uid}` | Single review |
-| `GET` | `/reviews/` | All reviews — **admin only** |
+| `POST` | `/reviews/book/{book_uid}` | Review a book (1–5 stars and text) |
+| `GET` | `/reviews/{uid}` | Retrieve a single review |
+| `GET` | `/reviews/` | List all reviews *(admin)* |
 | `DELETE` | `/reviews/{uid}` | Delete a review |
 
-</details>
-
-<details>
-<summary><strong>Tags</strong></summary>
+### Tags
 
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/tags/` | List tags |
-| `POST` | `/tags/` | Create a tag — **admin only** |
+| `POST` | `/tags/` | Create a tag *(admin)* |
 | `POST` | `/tags/{tag_uid}/books/{book_uid}` | Attach a tag to a book |
 | `PUT` | `/tags/{tag_uid}` | Rename a tag |
 | `DELETE` | `/tags/{tag_uid}` | Delete a tag |
 
-</details>
-
-Authenticated endpoints expect `Authorization: Bearer <access token>`. The frontend's API client attaches and refreshes tokens automatically.
-
-## 🗂 Project layout
+## Project structure
 
 ```
 bookshelf-api/
 ├── backend/
 │   ├── main.py               # ASGI entrypoint (uvicorn main:app)
-│   ├── error.py              # domain exceptions + JSON error handlers
+│   ├── error.py              # domain exceptions and JSON error handlers
 │   ├── requirements.txt
 │   └── src/
-│       ├── auth/             # routes, JWT utils, dependencies, schemas
-│       ├── books/            # book CRUD + app settings (config.py)
+│       ├── auth/             # routes, JWT utilities, dependencies, schemas
+│       ├── books/            # book CRUD and application settings
 │       ├── reviews/          # review routes and service
 │       ├── tags/             # tag routes and service
-│       ├── db/               # async engine, models, Redis blocklist
+│       ├── db/               # async engine, models, Redis token blocklist
 │       ├── mail.py           # fastapi-mail configuration
-│       └── celery_tasks.py   # async email task
+│       └── celery_tasks.py   # asynchronous email task
 └── frontend/
     └── src/
         ├── lib/              # typed API client, auth context
         ├── components/       # navbar, book cards, forms, UI primitives
-        └── app/              # books, profile, login, signup,
+        └── app/              # routes: books, profile, login, signup,
                               # verify/[token], password-reset-confirm/[token]
 ```
 
-## 🧰 Tech stack
+## Tech stack
 
-**Backend** · FastAPI · SQLModel (async SQLAlchemy) · Pydantic v2 · PostgreSQL (asyncpg) · Redis · Celery · PyJWT · passlib/bcrypt · fastapi-mail · itsdangerous
-
-**Frontend** · Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4
+| Layer | Technologies |
+|---|---|
+| API | FastAPI, SQLModel (async SQLAlchemy), Pydantic v2 |
+| Data | PostgreSQL (asyncpg), Redis |
+| Auth | PyJWT, passlib + bcrypt, itsdangerous |
+| Background jobs | Celery with Redis broker, fastapi-mail |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4 |
 
 ---
 
-<div align="center">
-
-Built with FastAPI & Next.js — PRs and issues welcome.
-
-</div>
+Contributions are welcome — please open an issue or submit a pull request.
